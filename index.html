@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saccadi — Allenamento dei Movimenti Oculari</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #1a2233;
+    --panel-2: #222c42;
+    --text: #e8ecf4;
+    --muted: #8b95ab;
+    --accent: #4f8ef7;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .screen { display: none; width: 100%; }
+  .screen.active { display: block; }
+
+  /* ---------- DASHBOARD ---------- */
+  #setup { max-width: 560px; }
+  .card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.35);
+  }
+  h1 { font-size: 1.7rem; margin-bottom: 4px; }
+  .copyright { color: var(--muted); font-size: .8rem; font-weight: 400; white-space: nowrap; }
+  .subtitle { color: #ffffff; margin-bottom: 8px; font-size: 1.35rem; font-weight: 600; text-align: center; }
+  .field { margin-bottom: 24px; }
+  .field > label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: .95rem;
+  }
+  .seg {
+    display: flex;
+    flex-wrap: wrap;
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .seg button {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .seg button.sel { background: var(--accent); color: #fff; }
+  .seg button:disabled { opacity: .35; cursor: not-allowed; }
+  .slider-row { display: flex; align-items: center; gap: 16px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val {
+    min-width: 84px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 6px; }
+  .warn { color: #f5b942; font-size: .8rem; margin-top: 6px; }
+  .field input[type=text] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--panel-2);
+    border-radius: 10px;
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+  }
+  .field input[type=text]:focus { border-color: var(--accent); }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.secondary { background: var(--panel-2); color: var(--text); }
+  .btn + .btn { margin-top: 12px; }
+
+  /* ---------- SESSIONE (sfondo bianco) ---------- */
+  body.light { background: #ffffff; }
+  body.light #progress { color: #777; }
+  body.light #voiceZone p, body.light #answerZone p { color: #555; }
+  body.light #answerInput { background: #fff; color: #111; border-color: #ccc; }
+  body.light #answerInput:focus { border-color: var(--accent); }
+  body.light #feedback .correction { color: #555; }
+  body.light #feedback .correction b { color: #1e9e56; }
+  body.light #continueHint { color: #888; }
+  body.light #abort { border-color: #ddd; color: #999; }
+  body.light .center-mark { color: #999; }
+  body.light .center-mark.dim { color: #ccc; }
+  body.light #micBanner { background: #fff3cd; color: #7a5b00; }
+
+  #stage {
+    position: fixed;
+    inset: 0;
+  }
+  #progress {
+    position: fixed;
+    top: 20px; left: 0; right: 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: .95rem;
+    letter-spacing: .05em;
+  }
+  .center-mark {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--muted);
+    font-family: "Consolas", "Courier New", monospace;
+    user-select: none;
+  }
+  .center-mark.dim { opacity: .35; }
+  .slot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: clamp(3rem, 10vw, 6rem);
+    font-weight: 700;
+    font-family: "Consolas", "Courier New", monospace;
+    letter-spacing: .05em;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6em;
+    height: 1.6em;
+  }
+  #voiceZone, #answerZone {
+    position: fixed;
+    left: 50%; bottom: 12%;
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    width: min(90vw, 520px);
+  }
+  #voiceZone.on, #answerZone.on { opacity: 1; pointer-events: auto; }
+  #voiceZone p { color: var(--muted); font-size: 1.05rem; }
+  #voiceZone .mic { font-size: 1.6rem; display: inline-block; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  #voiceTranscript { display: block; margin-top: 8px; font-family: "Consolas", monospace; font-size: 1.3rem; color: var(--accent); min-height: 1.4em; }
+  #answerZone p { color: var(--muted); margin-bottom: 16px; }
+  #answerInput {
+    font-size: 2.2rem;
+    font-family: "Consolas", "Courier New", monospace;
+    text-align: center;
+    letter-spacing: .12em;
+    padding: 12px 20px;
+    width: 100%;
+    border: 2px solid var(--panel-2);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--text);
+    outline: none;
+    text-transform: uppercase;
+  }
+  #answerInput:focus { border-color: var(--accent); }
+  #micBanner {
+    position: fixed;
+    top: 60px; left: 50%;
+    transform: translateX(-50%);
+    background: #3a2f10;
+    color: #f5b942;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: .9rem;
+    display: none;
+    max-width: 90vw;
+    text-align: center;
+  }
+  #feedback { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); text-align: center; }
+  #feedback .icon { font-size: 6rem; line-height: 1.2; }
+  #feedback .icon.ok { color: var(--green); }
+  #feedback .icon.ko { color: var(--red); }
+  #feedback .correction { margin-top: 16px; font-size: 1.1rem; color: var(--muted); }
+  #feedback .correction b {
+    display: block;
+    font-size: 2.6rem;
+    font-family: "Consolas", monospace;
+    letter-spacing: .12em;
+    color: var(--green);
+    margin-top: 6px;
+  }
+  #feedback .yours {
+    margin-top: 10px;
+    font-size: 1rem;
+    color: var(--red);
+    font-family: "Consolas", monospace;
+    letter-spacing: .08em;
+  }
+  #continueHint { margin-top: 28px; color: var(--muted); font-size: .9rem; }
+  @media (max-width: 480px) {
+    .card { padding: 22px; }
+    .copyright { display: block; margin-top: 4px; }
+    .seg button { font-size: .8rem; padding: 8px 4px; }
+    #answerInput { font-size: 1.6rem; }
+    .slider-row { flex-wrap: wrap; }
+  }
+  #abort {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    background: transparent;
+    border: 1px solid var(--panel-2);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .85rem;
+  }
+  #abort:hover { color: var(--red); border-color: var(--red); }
+
+  /* ---------- REPORT ---------- */
+  #report { max-width: 640px; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin: 24px 0;
+  }
+  .stat {
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 16px 12px;
+    text-align: center;
+  }
+  .stat .val { font-size: 1.6rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat .val.good { color: var(--green); }
+  .stat .val.bad { color: var(--red); }
+  .stat .lbl { color: var(--muted); font-size: .78rem; margin-top: 4px; text-transform: uppercase; letter-spacing: .05em; }
+  .progression {
+    background: rgba(46, 204, 113, .12);
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  #errList { margin: 8px 0 24px; }
+  #errList h3 { font-size: 1rem; margin-bottom: 10px; }
+  #errList table { width: 100%; border-collapse: collapse; font-family: "Consolas", monospace; }
+  #errList th, #errList td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--panel-2); letter-spacing: .08em; }
+  #errList th { color: var(--muted); font-family: inherit; font-size: .8rem; letter-spacing: .05em; text-transform: uppercase; }
+  #errList td.ok-cell { color: var(--green); }
+  #errList td.ko-cell { color: var(--red); }
+  .no-errors { color: var(--green); font-weight: 600; margin: 12px 0 24px; }
+</style>
+</head>
+<body>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="setup" class="screen active">
+  <div class="card">
+    <h1>🎯 Saccadi <span class="copyright">— copyright Dott. Francesco Curci</span></h1>
+    <p class="subtitle">Configura l'esercizio</p>
+    <p class="hint" style="text-align:center;margin-bottom:24px;">Funziona sia in verticale sia in orizzontale (landscape): ruota il dispositivo per un range di movimento più ampio.</p>
+
+    <div class="field">
+      <label>Nome</label>
+      <input type="text" id="studentName" list="studentNames" placeholder="Scrivi il tuo nome" autocomplete="off">
+      <datalist id="studentNames"></datalist>
+      <p class="hint">Ogni nome ha le proprie impostazioni salvate automaticamente</p>
+    </div>
+
+    <div class="field">
+      <label>Tipo di stimolo</label>
+      <div class="seg" id="stimType">
+        <button data-v="lettere" class="sel">Lettere</button>
+        <button data-v="numeri">Numeri</button>
+        <button data-v="misto">Misto</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Modalità di risposta</label>
+      <div class="seg" id="respMode">
+        <button data-v="voce" class="sel">🎤 Voce</button>
+        <button data-v="tastiera">⌨️ Tastiera</button>
+      </div>
+      <p class="hint" id="voceHint">Il paziente legge ad alta voce la lettera vista in periferia: il programma la riconosce e segnala l'esito. Serve microfono, connessione internet e un browser compatibile (Chrome/Edge, desktop o Android). Non è uno strumento diagnostico: usalo come supporto all'allenamento.</p>
+      <p class="warn" id="voceUnsupported" style="display:none;">Il riconoscimento vocale non è supportato da questo browser: verrà usata la tastiera.</p>
+    </div>
+
+    <div class="field">
+      <label>Livello di difficoltà</label>
+      <div class="seg" id="levelSeg">
+        <button data-v="1" class="sel">1</button>
+        <button data-v="2">2</button>
+        <button data-v="3">3</button>
+        <button data-v="4">4</button>
+        <button data-v="5">5</button>
+      </div>
+      <p class="hint" id="levelHint"></p>
+    </div>
+
+    <div class="field">
+      <label>Tempo di fissazione centrale</label>
+      <div class="slider-row">
+        <input type="range" id="fixTime" min="300" max="1500" value="600" step="100">
+        <span class="slider-val" id="fixTimeVal">0,60 s</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Tempo di esposizione del bersaglio</label>
+      <div class="slider-row">
+        <input type="range" id="expTime" min="100" max="1000" value="500" step="50">
+        <span class="slider-val" id="expTimeVal">0,50 s</span>
+      </div>
+      <p class="hint">Da 1 secondo (facile) a 0,1 secondi (difficile)</p>
+    </div>
+
+    <div class="field" id="voiceTimeField">
+      <label>Tempo massimo per rispondere a voce</label>
+      <div class="slider-row">
+        <input type="range" id="voiceTime" min="1500" max="5000" value="3000" step="500">
+        <span class="slider-val" id="voiceTimeVal">3,0 s</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Numero di ripetizioni</label>
+      <div class="slider-row">
+        <input type="range" id="numStim" min="10" max="50" value="20" step="5">
+        <span class="slider-val" id="numStimVal">20</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Contrasto dei caratteri</label>
+      <div class="slider-row">
+        <input type="range" id="contrast" min="0" max="10" value="10" step="1">
+        <span class="slider-val" id="contrastVal">100%</span>
+        <span id="contrastPreview" style="display:inline-block;background:#fff;border-radius:8px;padding:4px 12px;font-family:Consolas,monospace;font-weight:700;font-size:1.1rem;letter-spacing:.1em;">ABC</span>
+      </div>
+      <p class="hint">100% = nero puro su sfondo bianco, 5% = grigio quasi invisibile</p>
+    </div>
+
+    <button class="btn" id="startBtn">▶ Inizia l'esercizio</button>
+  </div>
+</div>
+
+<!-- ============ SESSIONE ============ -->
+<div id="session" class="screen">
+  <div id="progress"></div>
+  <div id="stage">
+    <div class="center-mark" id="centerMark">+</div>
+  </div>
+  <div id="micBanner"></div>
+  <div id="voiceZone">
+    <p><span class="mic">🎤</span> In ascolto…<span id="voiceTranscript"></span></p>
+  </div>
+  <div id="answerZone">
+    <p>Che cosa hai visto? Scrivi e premi <b>Invio</b></p>
+    <form id="answerForm">
+      <input id="answerInput" autocomplete="off" spellcheck="false" autocapitalize="characters" autocorrect="off" enterkeyhint="send">
+    </form>
+  </div>
+  <div id="feedback">
+    <div class="icon"></div>
+    <div class="correction"></div>
+    <div class="yours"></div>
+    <div id="continueHint"></div>
+  </div>
+  <button id="abort">✕ Termina esercizio</button>
+</div>
+
+<!-- ============ REPORT ============ -->
+<div id="report" class="screen">
+  <div class="card">
+    <h1>📊 Resoconto dell'esercizio</h1>
+    <div id="progressionMsg"></div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div id="errList"></div>
+    <button class="btn" id="againBtn">🔁 Ripeti con le stesse impostazioni</button>
+    <button class="btn secondary" id="homeBtn">⚙️ Torna alla configurazione</button>
+  </div>
+</div>
+
+<script>
+// ------------------------------------------------------------------
+// Dati
+// ------------------------------------------------------------------
+const LETTERS = "ABCDEFGHILMNOPQRSTUVZ";
+const DIGITS  = "0123456789";
+
+// nomi italiani delle lettere, per il confronto con il parlato
+const LETTER_NAMES = {
+  A:["a"], B:["bi","b"], C:["ci","c","chi"], D:["di","d"], E:["e"],
+  F:["effe","f"], G:["gi","g"], H:["acca","h"], I:["i"], L:["elle","l"],
+  M:["emme","m"], N:["enne","n"], O:["o"], P:["pi","p"], Q:["cu","q"],
+  R:["erre","r"], S:["esse","s"], T:["ti","t"], U:["u"], V:["vu","vi","v"],
+  Z:["zeta","z"]
+};
+const DIGIT_NAMES = {
+  "0":["zero"], "1":["uno"], "2":["due"], "3":["tre"], "4":["quattro"],
+  "5":["cinque"], "6":["sei"], "7":["sette"], "8":["otto"], "9":["nove"]
+};
+
+// ------------------------------------------------------------------
+// Stato configurazione
+// ------------------------------------------------------------------
+const DEFAULT_CFG = {
+  type: "lettere", respMode: "voce", level: 1,
+  fixTime: 600, expTime: 500, voiceTime: 3000,
+  numStim: 20, contrast: 100
+};
+const cfg = { ...DEFAULT_CFG };
+
+function stimColor() {
+  const g = Math.round(255 * (1 - cfg.contrast / 100));
+  return `rgb(${g},${g},${g})`;
+}
+
+// ------------------------------------------------------------------
+// Livelli di difficoltà: ogni livello definisce un intervallo di
+// ampiezza (variabile ad ogni stimolo, mai fisso) e un grado di
+// libertà/casualità della posizione. Ai livelli alti la posizione è
+// libera a 360° e tende spesso a saltare dal lato opposto (diagonali
+// comprese), pur restando casuale entro un intervallo.
+// ------------------------------------------------------------------
+const LEVELS = {
+  1: { amp: [15, 22], mode: "fixed", angles: [0, 180], jitter: 8, oppositeBias: 0,
+       desc: "Movimenti piccoli e simili tra loro, solo a sinistra/destra. Distanza dal centro comunque variabile." },
+  2: { amp: [18, 28], mode: "fixed", angles: [0, 90, 180, 270], jitter: 10, oppositeBias: 0,
+       desc: "Si aggiungono alto/basso. Ampiezza un po' più ampia e più variabile." },
+  3: { amp: [20, 36], mode: "fixed", angles: [0, 45, 90, 135, 180, 225, 270, 315], jitter: 12, oppositeBias: 0.2,
+       desc: "8 direzioni, incluse le diagonali. Ampiezza più ampia e variabile." },
+  4: { amp: [24, 42], mode: "free", angles: null, jitter: 0, oppositeBias: 0.4,
+       desc: "Posizione libera a 360°, ampiezza ampia e poco prevedibile." },
+  5: { amp: [28, 48], mode: "free", angles: null, jitter: 0, oppositeBias: 0.65,
+       desc: "Massima ampiezza e casualità: il bersaglio salta spesso dal lato opposto, anche in diagonale." }
+};
+function rndInRange([min, max]) { return min + Math.random() * (max - min); }
+function pickTrialGeometry(level, prevAngle) {
+  const L = LEVELS[level];
+  const amp = rndInRange(L.amp);
+  let angle;
+  if (L.mode === "fixed") {
+    const base = rand(L.angles);
+    angle = base + (Math.random() * 2 - 1) * L.jitter;
+  } else if (prevAngle != null && Math.random() < L.oppositeBias) {
+    angle = prevAngle + 180 + (Math.random() * 2 - 1) * 35;
+  } else {
+    angle = Math.random() * 360;
+  }
+  angle = ((angle % 360) + 360) % 360;
+  return { amp, angle };
+}
+
+// ------------------------------------------------------------------
+// Riconoscimento vocale: disponibilità
+// ------------------------------------------------------------------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceSupported = !!SR;
+
+// ------------------------------------------------------------------
+// Persistenza impostazioni per singolo studente
+// ------------------------------------------------------------------
+const LAST_NAME_KEY = "saccadi_lastName";
+const PROFILES_KEY = "saccadi_profiles";
+const normalizeName = name => (name || "").trim().toLowerCase();
+const settingsKeyFor = name => "saccadi_settings::" + (normalizeName(name) || "_senza_nome");
+
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; }
+  catch (e) { return []; }
+}
+function rememberProfile(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return;
+  const profiles = getProfiles();
+  if (!profiles.some(p => normalizeName(p) === normalizeName(trimmed))) {
+    profiles.push(trimmed);
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+    populateNameList();
+  }
+}
+function populateNameList() {
+  const dl = document.getElementById("studentNames");
+  dl.innerHTML = getProfiles().map(n => `<option value="${n.replace(/"/g, "&quot;")}">`).join("");
+}
+function currentName() { return document.getElementById("studentName").value; }
+
+function saveSettings() {
+  localStorage.setItem(settingsKeyFor(currentName()), JSON.stringify(cfg));
+  localStorage.setItem(LAST_NAME_KEY, currentName());
+  rememberProfile(currentName());
+}
+function loadProfile(name) {
+  Object.assign(cfg, DEFAULT_CFG);
+  try {
+    const saved = JSON.parse(localStorage.getItem(settingsKeyFor(name)));
+    if (saved) Object.assign(cfg, saved);
+  } catch (e) { /* impostazioni salvate non valide: si usano i valori di default */ }
+  if (!voiceSupported) cfg.respMode = "tastiera";
+  if (!LEVELS[cfg.level]) cfg.level = DEFAULT_CFG.level;
+}
+
+// ------------------------------------------------------------------
+// Dashboard: interazioni
+// ------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+
+function switchProfile() {
+  loadProfile(currentName());
+  syncDashboard();
+  localStorage.setItem(LAST_NAME_KEY, currentName());
+  rememberProfile(currentName());
+}
+$("studentName").addEventListener("change", switchProfile);
+$("studentName").addEventListener("blur", switchProfile);
+$("studentName").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); $("studentName").blur(); }
+});
+
+$("stimType").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  cfg.type = b.dataset.v;
+  document.querySelectorAll("#stimType button").forEach(x => x.classList.toggle("sel", x === b));
+  saveSettings();
+});
+$("respMode").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  cfg.respMode = b.dataset.v;
+  document.querySelectorAll("#respMode button").forEach(x => x.classList.toggle("sel", x === b));
+  $("voiceTimeField").style.display = cfg.respMode === "voce" ? "" : "none";
+  saveSettings();
+});
+$("levelSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  cfg.level = +b.dataset.v;
+  document.querySelectorAll("#levelSeg button").forEach(x => x.classList.toggle("sel", x === b));
+  $("levelHint").textContent = LEVELS[cfg.level].desc;
+  saveSettings();
+});
+$("fixTime").addEventListener("input", e => {
+  cfg.fixTime = +e.target.value;
+  $("fixTimeVal").textContent = (cfg.fixTime / 1000).toFixed(2).replace(".", ",") + " s";
+  saveSettings();
+});
+$("expTime").addEventListener("input", e => {
+  cfg.expTime = +e.target.value;
+  $("expTimeVal").textContent = (cfg.expTime / 1000).toFixed(2).replace(".", ",") + " s";
+  saveSettings();
+});
+$("voiceTime").addEventListener("input", e => {
+  cfg.voiceTime = +e.target.value;
+  $("voiceTimeVal").textContent = (cfg.voiceTime / 1000).toFixed(1).replace(".", ",") + " s";
+  saveSettings();
+});
+$("numStim").addEventListener("input", e => {
+  cfg.numStim = +e.target.value;
+  $("numStimVal").textContent = cfg.numStim;
+  saveSettings();
+});
+const CONTRAST_LEVELS = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+$("contrast").addEventListener("input", e => {
+  cfg.contrast = CONTRAST_LEVELS[+e.target.value];
+  $("contrastVal").textContent = cfg.contrast + "%";
+  $("contrastPreview").style.color = stimColor();
+  saveSettings();
+});
+
+function syncDashboard() {
+  document.querySelectorAll("#stimType button").forEach(x => x.classList.toggle("sel", x.dataset.v === cfg.type));
+  document.querySelectorAll("#respMode button").forEach(x => x.classList.toggle("sel", x.dataset.v === cfg.respMode));
+  document.querySelectorAll("#levelSeg button").forEach(x => x.classList.toggle("sel", +x.dataset.v === cfg.level));
+  $("levelHint").textContent = LEVELS[cfg.level].desc;
+  $("voiceTimeField").style.display = cfg.respMode === "voce" ? "" : "none";
+  $("fixTime").value = cfg.fixTime;
+  $("fixTimeVal").textContent = (cfg.fixTime / 1000).toFixed(2).replace(".", ",") + " s";
+  $("expTime").value = cfg.expTime;
+  $("expTimeVal").textContent = (cfg.expTime / 1000).toFixed(2).replace(".", ",") + " s";
+  $("voiceTime").value = cfg.voiceTime;
+  $("voiceTimeVal").textContent = (cfg.voiceTime / 1000).toFixed(1).replace(".", ",") + " s";
+  $("numStim").value = cfg.numStim;
+  $("numStimVal").textContent = cfg.numStim;
+  const idx = CONTRAST_LEVELS.indexOf(cfg.contrast);
+  $("contrast").value = idx === -1 ? 10 : idx;
+  $("contrastVal").textContent = cfg.contrast + "%";
+  $("contrastPreview").style.color = stimColor();
+}
+
+if (!voiceSupported) {
+  $("voceUnsupported").style.display = "";
+  $("voceHint").style.display = "none";
+  document.querySelector('#respMode button[data-v="voce"]').disabled = true;
+}
+
+const lastName = localStorage.getItem(LAST_NAME_KEY) || "";
+$("studentName").value = lastName;
+loadProfile(lastName);
+populateNameList();
+syncDashboard();
+
+// ------------------------------------------------------------------
+// Audio di feedback (Web Audio API)
+// ------------------------------------------------------------------
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+}
+function playBeep() {
+  ensureAudio();
+  [0, 0.12].forEach((t, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine"; o.frequency.value = i ? 1320 : 880;
+    g.gain.setValueAtTime(0.25, audioCtx.currentTime + t);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + t + 0.1);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + 0.1);
+  });
+}
+function playBuzz() {
+  ensureAudio();
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = "sawtooth"; o.frequency.value = 140;
+  g.gain.setValueAtTime(0.22, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.45);
+}
+
+// ------------------------------------------------------------------
+// Generazione stimoli
+// ------------------------------------------------------------------
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function makeStimulus() {
+  let pool;
+  if (cfg.type === "lettere") pool = LETTERS;
+  else if (cfg.type === "numeri") pool = DIGITS;
+  else pool = LETTERS + DIGITS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ------------------------------------------------------------------
+// Bersaglio periferico: posizionato dinamicamente ad ogni stimolo.
+// Il raggio è calcolato come ellisse rispetto a metà larghezza/metà
+// altezza della finestra, cosicché in landscape si sfrutti la
+// larghezza disponibile e in portrait l'altezza (funziona in
+// entrambi gli orientamenti senza bisogno di un'impostazione dedicata).
+// ------------------------------------------------------------------
+let targetEl = null;
+function ensureTargetEl() {
+  if (!targetEl) {
+    targetEl = document.createElement("div");
+    targetEl.className = "slot";
+    $("stage").appendChild(targetEl);
+  }
+  return targetEl;
+}
+function computeTargetPosition(angleDeg, ampPercent) {
+  const margin = 90; // spazio riservato ai bordi per non far uscire il testo dallo schermo
+  const halfW = Math.max(0, window.innerWidth / 2 - margin);
+  const halfH = Math.max(0, window.innerHeight / 2 - margin);
+  const rx = (ampPercent / 100) * halfW;
+  const ry = (ampPercent / 100) * halfH;
+  const rad = angleDeg * Math.PI / 180;
+  return {
+    x: window.innerWidth / 2 + rx * Math.cos(rad),
+    y: window.innerHeight / 2 + ry * Math.sin(rad)
+  };
+}
+function repositionTargetIfActive() {
+  if (session.phase === "exposure" && targetEl && session.currentAngle != null) {
+    const pos = computeTargetPosition(session.currentAngle, session.currentAmp);
+    targetEl.style.left = pos.x + "px";
+    targetEl.style.top = pos.y + "px";
+  }
+}
+window.addEventListener("resize", repositionTargetIfActive);
+window.addEventListener("orientationchange", repositionTargetIfActive);
+
+// ------------------------------------------------------------------
+// Confronto risposta vocale
+// ------------------------------------------------------------------
+const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
+function normalizeToken(s) {
+  return s.toLowerCase().normalize("NFD").replace(DIACRITICS_RE, "").replace(/[^a-z0-9]/g, "");
+}
+function voiceMatches(transcript, target) {
+  if (!transcript) return false;
+  const tokens = transcript.split(/\s+/).map(normalizeToken).filter(Boolean);
+  const names = /[0-9]/.test(target) ? DIGIT_NAMES[target] : LETTER_NAMES[target];
+  const targetNorm = normalizeToken(target);
+  return tokens.some(tok => tok === targetNorm || (names && names.includes(tok)));
+}
+
+// ------------------------------------------------------------------
+// Macchina a stati della sessione
+// ------------------------------------------------------------------
+const session = {
+  stimuli: [], results: [], idx: 0,
+  startTime: 0, answerShownAt: 0, phase: "idle", timer: null,
+  recognition: null, transcript: "", evaluated: false,
+  currentAngle: null, currentAmp: null, lastAngle: null
+};
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+  document.body.classList.toggle("light", id === "session");
+}
+
+function startSession() {
+  ensureAudio();
+  session.stimuli = Array.from({ length: cfg.numStim }, makeStimulus);
+  session.results = [];
+  session.idx = 0;
+  session.lastAngle = null;
+  session.startTime = performance.now();
+  showScreen("session");
+  ensureTargetEl();
+  $("micBanner").style.display = "none";
+  nextStimulus();
+}
+
+function nextStimulus() {
+  if (session.idx >= session.stimuli.length) return endSession();
+  session.phase = "fixation";
+  $("progress").textContent = `Stimolo ${session.idx + 1} di ${session.stimuli.length}`;
+  $("voiceZone").classList.remove("on");
+  $("answerZone").classList.remove("on");
+  $("feedback").style.display = "none";
+  $("centerMark").classList.remove("dim");
+  $("centerMark").style.display = "";
+  if (targetEl) { targetEl.textContent = ""; targetEl.style.color = ""; }
+  session.timer = setTimeout(showStimulus, cfg.fixTime);
+}
+
+function showStimulus() {
+  session.phase = "exposure";
+  const geo = pickTrialGeometry(cfg.level, session.lastAngle);
+  session.currentAngle = geo.angle;
+  session.currentAmp = geo.amp;
+  session.lastAngle = geo.angle;
+  const el = ensureTargetEl();
+  const pos = computeTargetPosition(geo.angle, geo.amp);
+  el.style.left = pos.x + "px";
+  el.style.top = pos.y + "px";
+  const stim = session.stimuli[session.idx];
+  el.textContent = stim;
+  el.style.color = stimColor();
+  $("centerMark").classList.add("dim");
+  session.answerShownAt = performance.now();
+
+  if (cfg.respMode === "voce" && voiceSupported) {
+    startListening();
+  }
+  session.timer = setTimeout(hideStimulus, cfg.expTime);
+}
+
+function hideStimulus() {
+  if (targetEl) targetEl.textContent = "";
+  if (cfg.respMode === "tastiera" || !voiceSupported) {
+    session.phase = "answer";
+    $("answerZone").classList.add("on");
+    const inp = $("answerInput");
+    inp.value = "";
+    inp.focus();
+  }
+  // in modalità voce, l'ascolto prosegue: la valutazione avviene a fine registrazione
+}
+
+function startListening() {
+  session.transcript = "";
+  session.evaluated = false;
+  $("voiceZone").classList.add("on");
+  $("voiceTranscript").textContent = "";
+  const rec = new SR();
+  rec.lang = "it-IT";
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.maxAlternatives = 3;
+  session.recognition = rec;
+
+  rec.onresult = e => {
+    let best = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      best = e.results[i][0].transcript;
+      session.transcript = best;
+      $("voiceTranscript").textContent = best;
+      if (e.results[i].isFinal) {
+        evaluateVoice();
+        return;
+      }
+    }
+  };
+  rec.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      cfg.respMode = "tastiera";
+      const banner = $("micBanner");
+      banner.textContent = "🎤 Permesso microfono negato: proseguo con la tastiera.";
+      banner.style.display = "block";
+      $("voiceZone").classList.remove("on");
+      if (session.phase === "exposure" || session.phase === "listening") {
+        // la fase è già in corso: alla prossima esposizione userà la tastiera
+      }
+    }
+    // 'no-speech' e altri errori transitori: gestiti dal timeout in evaluateVoice
+  };
+  rec.onend = () => {
+    if (!session.evaluated) evaluateVoice();
+  };
+  try { rec.start(); } catch (e) { /* già avviato: ignorato */ }
+
+  clearTimeout(session.voiceTimer);
+  session.voiceTimer = setTimeout(() => {
+    try { rec.stop(); } catch (e) {}
+  }, cfg.voiceTime);
+}
+
+function evaluateVoice() {
+  if (session.evaluated) return;
+  session.evaluated = true;
+  clearTimeout(session.voiceTimer);
+  try { session.recognition && session.recognition.stop(); } catch (e) {}
+  $("voiceZone").classList.remove("on");
+  const target = session.stimuli[session.idx];
+  const raw = (session.transcript || "").trim();
+  const correct = voiceMatches(raw, target);
+  const rt = performance.now() - session.answerShownAt;
+  session.results.push({ target, answer: raw ? raw.toUpperCase() : "(nessuna risposta)", correct, rt, amp: session.currentAmp });
+  clearTimeout(session.timer);
+  showFeedback(correct, target, raw ? raw.toUpperCase() : "(nessuna risposta rilevata)", "Hai detto: ");
+}
+
+function submitAnswer() {
+  if (session.phase !== "answer") return;
+  const raw = $("answerInput").value.trim().toUpperCase();
+  if (!raw) return;
+  const target = session.stimuli[session.idx];
+  const correct = raw === target;
+  const rt = performance.now() - session.answerShownAt;
+  session.results.push({ target, answer: raw, correct, rt, amp: session.currentAmp });
+  showFeedback(correct, target, raw, "La tua risposta: ");
+}
+
+function showFeedback(correct, target, yoursText, yoursPrefix) {
+  session.phase = "feedback";
+  $("answerZone").classList.remove("on");
+  $("centerMark").style.display = "none";
+  const fb = $("feedback");
+  fb.style.display = "block";
+  const icon = fb.querySelector(".icon");
+  const corr = fb.querySelector(".correction");
+  const yours = fb.querySelector(".yours");
+  if (correct) {
+    playBeep();
+    icon.textContent = "✔";
+    icon.className = "icon ok";
+    corr.innerHTML = "";
+    yours.textContent = "";
+    $("continueHint").textContent = "";
+    session.timer = setTimeout(advance, 700);
+  } else {
+    playBuzz();
+    icon.textContent = "✖";
+    icon.className = "icon ko";
+    corr.innerHTML = "La lettera/numero era:<b>" + target + "</b>";
+    yours.textContent = yoursPrefix + yoursText;
+    $("continueHint").textContent = "Premi Invio o tocca lo schermo per continuare";
+  }
+}
+
+function advance() {
+  session.idx++;
+  nextStimulus();
+}
+
+function endSession() {
+  session.phase = "idle";
+  clearTimeout(session.timer);
+  clearTimeout(session.voiceTimer);
+  try { session.recognition && session.recognition.stop(); } catch (e) {}
+  const totalMs = performance.now() - session.startTime;
+  buildReport(totalMs);
+  showScreen("report");
+}
+
+// ------------------------------------------------------------------
+// Report
+// ------------------------------------------------------------------
+function fmtSec(ms) {
+  const s = ms / 1000;
+  if (s < 60) return s.toFixed(1).replace(".", ",") + " s";
+  return Math.floor(s / 60) + " min " + Math.round(s % 60) + " s";
+}
+
+function buildReport(totalMs) {
+  const r = session.results;
+  const n = r.length;
+  const errors = r.filter(x => !x.correct);
+  const okCount = n - errors.length;
+  const acc = n ? Math.round(okCount / n * 100) : 0;
+  const avgRt = n ? r.reduce((a, x) => a + x.rt, 0) / n : 0;
+  let streak = 0, best = 0;
+  r.forEach(x => { streak = x.correct ? streak + 1 : 0; best = Math.max(best, streak); });
+  const avgAmp = n ? Math.round(r.reduce((a, x) => a + (x.amp || 0), 0) / n) : 0;
+
+  $("statsGrid").innerHTML = `
+    <div class="stat"><div class="val ${acc >= 80 ? "good" : acc < 50 ? "bad" : ""}">${acc}%</div><div class="lbl">Accuratezza</div></div>
+    <div class="stat"><div class="val good">${okCount}</div><div class="lbl">Corrette</div></div>
+    <div class="stat"><div class="val ${errors.length ? "bad" : "good"}">${errors.length}</div><div class="lbl">Errori</div></div>
+    <div class="stat"><div class="val">${fmtSec(avgRt)}</div><div class="lbl">Tempo medio risposta</div></div>
+    <div class="stat"><div class="val">${fmtSec(totalMs)}</div><div class="lbl">Durata totale</div></div>
+    <div class="stat"><div class="val">${best}</div><div class="lbl">Serie massima</div></div>
+    <div class="stat"><div class="val">${(cfg.expTime / 1000).toFixed(2).replace(".", ",")} s</div><div class="lbl">Esposizione</div></div>
+    <div class="stat"><div class="val">${cfg.level}</div><div class="lbl">Livello</div></div>
+    <div class="stat"><div class="val">${avgAmp}%</div><div class="lbl">Ampiezza media</div></div>`;
+
+  const el = $("errList");
+  if (!errors.length) {
+    el.innerHTML = n ? `<p class="no-errors">🎉 Nessun errore, esercizio perfetto!</p>` : "";
+  } else {
+    el.innerHTML = `<h3>Dettaglio degli errori</h3>
+      <table>
+        <tr><th>#</th><th>Bersaglio</th><th>Risposta rilevata</th></tr>
+        ${r.map((x, i) => x.correct ? "" :
+          `<tr><td>${i + 1}</td><td class="ok-cell">${x.target}</td><td class="ko-cell">${x.answer}</td></tr>`
+        ).join("")}
+      </table>`;
+  }
+
+  applyProgression(acc, n);
+}
+
+// ------------------------------------------------------------------
+// Progressione automatica: sopra l'80% la difficoltà sale
+// ------------------------------------------------------------------
+function applyProgression(acc, n) {
+  const box = $("progressionMsg");
+  box.innerHTML = "";
+  if (n === 0 || acc <= 80) return;
+
+  if (cfg.expTime > 100) {
+    cfg.expTime = Math.max(100, cfg.expTime - 100);
+    box.innerHTML = `<div class="progression">🚀 Ottimo risultato (${acc}%)! Difficoltà aumentata:
+      la prossima esposizione durerà <b>${(cfg.expTime / 1000).toFixed(2).replace(".", ",")} s</b>.</div>`;
+  } else if (cfg.level < 5) {
+    cfg.level++;
+    box.innerHTML = `<div class="progression">🚀 Ottimo risultato (${acc}%)! Sei già al tempo minimo (0,10 s):
+      si passa al <b>livello ${cfg.level}</b> — ${LEVELS[cfg.level].desc}</div>`;
+  } else {
+    box.innerHTML = `<div class="progression">🏆 Complimenti (${acc}%)! Hai raggiunto il livello massimo di difficoltà.</div>`;
+  }
+  syncDashboard();
+  saveSettings();
+}
+
+// ------------------------------------------------------------------
+// Eventi globali
+// ------------------------------------------------------------------
+$("startBtn").addEventListener("click", startSession);
+$("againBtn").addEventListener("click", startSession);
+$("homeBtn").addEventListener("click", () => showScreen("setup"));
+$("abort").addEventListener("click", endSession);
+
+$("answerInput").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (session.phase === "answer") submitAnswer();
+  else if (session.phase === "feedback") { clearTimeout(session.timer); advance(); }
+});
+$("answerForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (session.phase === "answer") submitAnswer();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && session.phase === "feedback") {
+    clearTimeout(session.timer);
+    advance();
+  }
+});
+$("session").addEventListener?.("mousedown", () => {});
+document.getElementById("session").addEventListener("click", e => {
+  if (session.phase === "feedback" && !e.target.closest("#abort")) {
+    clearTimeout(session.timer);
+    advance();
+  }
+});
+</script>
+
+</body>
+</html>
