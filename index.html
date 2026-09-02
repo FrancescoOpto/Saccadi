@@ -351,9 +351,10 @@
     <div class="field" id="voiceTimeField">
       <label>Tempo massimo per rispondere a voce</label>
       <div class="slider-row">
-        <input type="range" id="voiceTime" min="1500" max="5000" value="3000" step="500">
-        <span class="slider-val" id="voiceTimeVal">3,0 s</span>
+        <input type="range" id="voiceTime" min="1500" max="6000" value="3500" step="500">
+        <span class="slider-val" id="voiceTimeVal">3,5 s</span>
       </div>
+      <p class="hint">Conteggiato da quando il bersaglio sparisce, non da quando compare</p>
     </div>
 
     <div class="field">
@@ -440,7 +441,7 @@ const DIGIT_NAMES = {
 // ------------------------------------------------------------------
 const DEFAULT_CFG = {
   type: "lettere", respMode: "voce", level: 1,
-  fixTime: 600, expTime: 500, voiceTime: 3000,
+  fixTime: 600, expTime: 500, voiceTime: 3500,
   numStim: 20, contrast: 100
 };
 const cfg = { ...DEFAULT_CFG };
@@ -785,8 +786,13 @@ function showStimulus() {
   el.style.color = stimColor();
   $("centerMark").classList.add("dim");
   session.answerShownAt = performance.now();
+  // finestra utile per la voce: dura cfg.voiceTime a partire da quando il
+  // bersaglio sparisce, non da quando compare (altrimenti l'esposizione
+  // "mangia" parte del tempo a disposizione per rispondere)
+  session.voiceDeadline = session.answerShownAt + cfg.expTime + cfg.voiceTime;
 
   if (cfg.respMode === "voce" && voiceSupported) {
+    session.voiceRestarts = 0;
     startListening();
   }
   session.timer = setTimeout(hideStimulus, cfg.expTime);
@@ -809,6 +815,14 @@ function startListening() {
   session.evaluated = false;
   $("voiceZone").classList.add("on");
   $("voiceTranscript").textContent = "";
+  beginRecognitionAttempt();
+}
+
+// Il motore di riconoscimento del browser spesso si ferma da solo dopo
+// un breve silenzio, anche se la finestra di risposta configurata non è
+// ancora scaduta. In quel caso lo si fa ripartire subito (fino a un
+// massimo di tentativi) invece di interrompere l'ascolto.
+function beginRecognitionAttempt() {
   const rec = new SR();
   rec.lang = "it-IT";
   rec.continuous = false;
@@ -835,21 +849,27 @@ function startListening() {
       banner.textContent = "🎤 Permesso microfono negato: proseguo con la tastiera.";
       banner.style.display = "block";
       $("voiceZone").classList.remove("on");
-      if (session.phase === "exposure" || session.phase === "listening") {
-        // la fase è già in corso: alla prossima esposizione userà la tastiera
-      }
+      evaluateVoice();
     }
-    // 'no-speech' e altri errori transitori: gestiti dal timeout in evaluateVoice
+    // 'no-speech' e altri errori transitori: gestiti dal riavvio in onend
   };
   rec.onend = () => {
-    if (!session.evaluated) evaluateVoice();
+    if (session.evaluated) return;
+    const remaining = session.voiceDeadline - performance.now();
+    if (remaining > 250 && session.voiceRestarts < 6 && cfg.respMode === "voce") {
+      session.voiceRestarts++;
+      try { beginRecognitionAttempt(); } catch (e) { evaluateVoice(); }
+    } else {
+      evaluateVoice();
+    }
   };
-  try { rec.start(); } catch (e) { /* già avviato: ignorato */ }
+  try { rec.start(); } catch (e) { evaluateVoice(); return; }
 
   clearTimeout(session.voiceTimer);
+  const timeoutMs = Math.max(200, session.voiceDeadline - performance.now());
   session.voiceTimer = setTimeout(() => {
     try { rec.stop(); } catch (e) {}
-  }, cfg.voiceTime);
+  }, timeoutMs);
 }
 
 function evaluateVoice() {
@@ -901,7 +921,13 @@ function showFeedback(correct, target, yoursText, yoursPrefix) {
     icon.className = "icon ko";
     corr.innerHTML = "La lettera/numero era:<b>" + target + "</b>";
     yours.textContent = yoursPrefix + yoursText;
-    $("continueHint").textContent = "Premi Invio o tocca lo schermo per continuare";
+    if (cfg.respMode === "voce") {
+      // in modalità voce il ritmo non deve mai fermarsi, anche sugli errori
+      $("continueHint").textContent = "";
+      session.timer = setTimeout(advance, 1400);
+    } else {
+      $("continueHint").textContent = "Premi Invio o tocca lo schermo per continuare";
+    }
   }
 }
 
