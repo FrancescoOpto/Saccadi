@@ -205,6 +205,33 @@
     max-width: 90vw;
     text-align: center;
   }
+  #voiceCompatBanner {
+    position: fixed;
+    top: 60px; left: 50%;
+    transform: translateX(-50%);
+    background: #3a2f10;
+    color: #f5b942;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: .85rem;
+    line-height: 1.5;
+    display: none;
+    max-width: min(90vw, 480px);
+    text-align: center;
+  }
+  #voiceCompatBanner button {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  body.light #voiceCompatBanner { background: #fff3cd; color: #7a5b00; }
   #feedback { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); text-align: center; }
   #feedback .icon { font-size: 6rem; line-height: 1.2; }
   #feedback .icon.ok { color: var(--green); }
@@ -386,6 +413,10 @@
     <div class="center-mark" id="centerMark">+</div>
   </div>
   <div id="micBanner"></div>
+  <div id="voiceCompatBanner">
+    ⚠️ Il microfono è attivo ma non riconosce le parole da diversi stimoli. Se usi un browser orientato alla privacy (es. DuckDuckGo, Brave, Opera), prova con Google Chrome o Microsoft Edge: sono gli unici pienamente compatibili con il riconoscimento vocale.
+    <br><button id="voiceCompatSwitchBtn">⌨️ Passa alla tastiera</button>
+  </div>
   <div id="voiceZone">
     <p><span class="mic">🎤</span> In ascolto…<span id="voiceTranscript"></span></p>
   </div>
@@ -737,8 +768,20 @@ const session = {
   stimuli: [], results: [], idx: 0,
   startTime: 0, answerShownAt: 0, phase: "idle", timer: null,
   recognition: null, transcript: "", evaluated: false,
-  currentAngle: null, currentAmp: null, lastAngle: null
+  currentAngle: null, currentAmp: null, lastAngle: null,
+  consecutiveEmptyVoice: 0, lastVoiceErrorWasPermission: false
 };
+
+function showVoiceCompatBanner() {
+  $("voiceCompatBanner").style.display = "block";
+}
+function hideVoiceCompatBanner() {
+  $("voiceCompatBanner").style.display = "none";
+}
+$("voiceCompatSwitchBtn").addEventListener("click", () => {
+  cfg.respMode = "tastiera";
+  hideVoiceCompatBanner();
+});
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
@@ -751,10 +794,12 @@ function startSession() {
   session.results = [];
   session.idx = 0;
   session.lastAngle = null;
+  session.consecutiveEmptyVoice = 0;
   session.startTime = performance.now();
   showScreen("session");
   ensureTargetEl();
   $("micBanner").style.display = "none";
+  hideVoiceCompatBanner();
   nextStimulus();
 }
 
@@ -813,6 +858,7 @@ function hideStimulus() {
 function startListening() {
   session.transcript = "";
   session.evaluated = false;
+  session.lastVoiceErrorWasPermission = false;
   $("voiceZone").classList.add("on");
   $("voiceTranscript").textContent = "";
   beginRecognitionAttempt();
@@ -844,6 +890,7 @@ function beginRecognitionAttempt() {
   };
   rec.onerror = e => {
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      session.lastVoiceErrorWasPermission = true;
       cfg.respMode = "tastiera";
       const banner = $("micBanner");
       banner.textContent = "🎤 Permesso microfono negato: proseguo con la tastiera.";
@@ -884,6 +931,20 @@ function evaluateVoice() {
   const rt = performance.now() - session.answerShownAt;
   session.results.push({ target, answer: raw ? raw.toUpperCase() : "(nessuna risposta)", correct, rt, amp: session.currentAmp });
   clearTimeout(session.timer);
+
+  // se il microfono resta "in ascolto" per diversi stimoli di fila senza
+  // catturare mai nulla (permesso concesso, nessun errore), è quasi
+  // sempre un browser che blocca il servizio di riconoscimento per
+  // motivi di privacy (DuckDuckGo, Brave, Opera...) piuttosto che un
+  // problema dell'utente: lo segnaliamo invece di lasciarlo in silenzio.
+  if (raw) {
+    session.consecutiveEmptyVoice = 0;
+    hideVoiceCompatBanner();
+  } else if (!session.lastVoiceErrorWasPermission) {
+    session.consecutiveEmptyVoice++;
+    if (session.consecutiveEmptyVoice >= 3) showVoiceCompatBanner();
+  }
+
   showFeedback(correct, target, raw ? raw.toUpperCase() : "(nessuna risposta rilevata)", "Hai detto: ");
 }
 
