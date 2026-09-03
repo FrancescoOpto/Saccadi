@@ -176,6 +176,7 @@
   #voiceZone .mic { font-size: 1.6rem; display: inline-block; animation: pulse 1s infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
   #voiceTranscript { display: block; margin-top: 8px; font-family: "Consolas", monospace; font-size: 1.3rem; color: var(--accent); min-height: 1.4em; }
+  #voiceDebug { font-size: .75rem; opacity: .55; margin-top: 6px; min-height: 1.2em; }
   #answerZone p { color: var(--muted); margin-bottom: 16px; }
   #answerInput {
     font-size: 2.2rem;
@@ -419,6 +420,7 @@
   </div>
   <div id="voiceZone">
     <p><span class="mic">🎤</span> In ascolto…<span id="voiceTranscript"></span></p>
+    <p id="voiceDebug"></p>
   </div>
   <div id="answerZone">
     <p>Che cosa hai visto? Scrivi e premi <b>Invio</b></p>
@@ -861,6 +863,7 @@ function startListening() {
   session.lastVoiceErrorWasPermission = false;
   $("voiceZone").classList.add("on");
   $("voiceTranscript").textContent = "";
+  $("voiceDebug").textContent = "";
   beginRecognitionAttempt();
 }
 
@@ -876,12 +879,16 @@ function beginRecognitionAttempt() {
   rec.maxAlternatives = 3;
   session.recognition = rec;
 
+  rec.onstart = () => {
+    $("voiceDebug").textContent = "ascolto attivo…";
+  };
   rec.onresult = e => {
     let best = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
       best = e.results[i][0].transcript;
       session.transcript = best;
       $("voiceTranscript").textContent = best;
+      $("voiceDebug").textContent = e.results[i].isFinal ? "risultato finale ricevuto" : "sto sentendo qualcosa…";
       if (e.results[i].isFinal) {
         evaluateVoice();
         return;
@@ -889,6 +896,7 @@ function beginRecognitionAttempt() {
     }
   };
   rec.onerror = e => {
+    $("voiceDebug").textContent = "errore motore vocale: " + e.error;
     if (e.error === "not-allowed" || e.error === "service-not-allowed") {
       session.lastVoiceErrorWasPermission = true;
       cfg.respMode = "tastiera";
@@ -905,12 +913,13 @@ function beginRecognitionAttempt() {
     const remaining = session.voiceDeadline - performance.now();
     if (remaining > 250 && session.voiceRestarts < 6 && cfg.respMode === "voce") {
       session.voiceRestarts++;
+      $("voiceDebug").textContent = "riavvio ascolto (tentativo " + session.voiceRestarts + ")…";
       try { beginRecognitionAttempt(); } catch (e) { evaluateVoice(); }
     } else {
       evaluateVoice();
     }
   };
-  try { rec.start(); } catch (e) { evaluateVoice(); return; }
+  try { rec.start(); } catch (e) { $("voiceDebug").textContent = "avvio fallito: " + e.message; evaluateVoice(); return; }
 
   clearTimeout(session.voiceTimer);
   const timeoutMs = Math.max(200, session.voiceDeadline - performance.now());
@@ -1091,6 +1100,13 @@ $("answerInput").addEventListener("keydown", e => {
   e.stopPropagation();
   if (session.phase === "answer") submitAnswer();
   else if (session.phase === "feedback") { clearTimeout(session.timer); advance(); }
+});
+// il bersaglio è sempre un solo carattere: appena viene digitato si
+// invia subito, senza attendere Invio (altrimenti il ritmo rallenta)
+$("answerInput").addEventListener("input", e => {
+  if (session.phase === "answer" && e.target.value.trim().length >= 1) {
+    submitAnswer();
+  }
 });
 $("answerForm").addEventListener("submit", e => {
   e.preventDefault();
