@@ -114,7 +114,7 @@
   /* ---------- SESSIONE (sfondo bianco) ---------- */
   body.light { background: #ffffff; }
   body.light #progress { color: #777; }
-  body.light #voiceZone p, body.light #answerZone p { color: #555; }
+  body.light #answerZone p { color: #555; }
   body.light #answerInput { background: #fff; color: #111; border-color: #ccc; }
   body.light #answerInput:focus { border-color: var(--accent); }
   body.light #feedback .correction { color: #555; }
@@ -123,7 +123,6 @@
   body.light #abort { border-color: #ddd; color: #999; }
   body.light .center-mark { color: #999; }
   body.light .center-mark.dim { color: #ccc; }
-  body.light #micBanner { background: #fff3cd; color: #7a5b00; }
 
   #stage {
     position: fixed;
@@ -162,7 +161,7 @@
     width: 1.6em;
     height: 1.6em;
   }
-  #voiceZone, #answerZone {
+  #answerZone {
     position: fixed;
     left: 50%; bottom: 12%;
     transform: translateX(-50%);
@@ -171,12 +170,7 @@
     pointer-events: none;
     width: min(90vw, 520px);
   }
-  #voiceZone.on, #answerZone.on { opacity: 1; pointer-events: auto; }
-  #voiceZone p { color: var(--muted); font-size: 1.05rem; }
-  #voiceZone .mic { font-size: 1.6rem; display: inline-block; animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
-  #voiceTranscript { display: block; margin-top: 8px; font-family: "Consolas", monospace; font-size: 1.3rem; color: var(--accent); min-height: 1.4em; }
-  #voiceDebug { font-size: .75rem; opacity: .55; margin-top: 6px; min-height: 1.2em; }
+  #answerZone.on { opacity: 1; pointer-events: auto; }
   #answerZone p { color: var(--muted); margin-bottom: 16px; }
   #answerInput {
     font-size: 2.2rem;
@@ -193,46 +187,6 @@
     text-transform: uppercase;
   }
   #answerInput:focus { border-color: var(--accent); }
-  #micBanner {
-    position: fixed;
-    top: 60px; left: 50%;
-    transform: translateX(-50%);
-    background: #3a2f10;
-    color: #f5b942;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: .9rem;
-    display: none;
-    max-width: 90vw;
-    text-align: center;
-  }
-  #voiceCompatBanner {
-    position: fixed;
-    top: 60px; left: 50%;
-    transform: translateX(-50%);
-    background: #3a2f10;
-    color: #f5b942;
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-size: .85rem;
-    line-height: 1.5;
-    display: none;
-    max-width: min(90vw, 480px);
-    text-align: center;
-  }
-  #voiceCompatBanner button {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 6px 14px;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #fff;
-    font-size: .85rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  body.light #voiceCompatBanner { background: #fff3cd; color: #7a5b00; }
   #feedback { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); text-align: center; }
   #feedback .icon { font-size: 6rem; line-height: 1.2; }
   #feedback .icon.ok { color: var(--green); }
@@ -340,11 +294,10 @@
     <div class="field">
       <label>Modalità di risposta</label>
       <div class="seg" id="respMode">
-        <button data-v="voce" class="sel">🎤 Voce</button>
+        <button data-v="tocco" class="sel">👆 Tocco</button>
         <button data-v="tastiera">⌨️ Tastiera</button>
       </div>
-      <p class="hint" id="voceHint">Il paziente legge ad alta voce la lettera vista in periferia: il programma la riconosce e segnala l'esito. Serve microfono, connessione internet e un browser compatibile (Chrome/Edge, desktop o Android). Non è uno strumento diagnostico: usalo come supporto all'allenamento.</p>
-      <p class="warn" id="voceUnsupported" style="display:none;">Il riconoscimento vocale non è supportato da questo browser: verrà usata la tastiera.</p>
+      <p class="hint" id="toccoHint">Il paziente deve toccare (o cliccare) la lettera nell'istante in cui appare in periferia, prima che sparisca: se il tempo di esposizione scade senza un tocco sul bersaglio, la risposta conta come errata. Funziona con dito o mouse su smartphone, tablet e PC — il sistema riconosce automaticamente il tipo di dispositivo e adatta la tolleranza del tocco.</p>
     </div>
 
     <div class="field">
@@ -376,15 +329,6 @@
       <p class="hint">Da 1 secondo (facile) a 0,1 secondi (difficile)</p>
     </div>
 
-    <div class="field" id="voiceTimeField">
-      <label>Tempo massimo per rispondere a voce</label>
-      <div class="slider-row">
-        <input type="range" id="voiceTime" min="1500" max="6000" value="3500" step="500">
-        <span class="slider-val" id="voiceTimeVal">3,5 s</span>
-      </div>
-      <p class="hint">Conteggiato da quando il bersaglio sparisce, non da quando compare</p>
-    </div>
-
     <div class="field">
       <label>Numero di ripetizioni</label>
       <div class="slider-row">
@@ -412,15 +356,6 @@
   <div id="progress"></div>
   <div id="stage">
     <div class="center-mark" id="centerMark">+</div>
-  </div>
-  <div id="micBanner"></div>
-  <div id="voiceCompatBanner">
-    ⚠️ Il microfono è attivo ma non riconosce le parole da diversi stimoli. Se usi un browser orientato alla privacy (es. DuckDuckGo, Brave, Opera), prova con Google Chrome o Microsoft Edge: sono gli unici pienamente compatibili con il riconoscimento vocale.
-    <br><button id="voiceCompatSwitchBtn">⌨️ Passa alla tastiera</button>
-  </div>
-  <div id="voiceZone">
-    <p><span class="mic">🎤</span> In ascolto…<span id="voiceTranscript"></span></p>
-    <p id="voiceDebug"></p>
   </div>
   <div id="answerZone">
     <p>Che cosa hai visto? Scrivi e premi <b>Invio</b></p>
@@ -456,25 +391,12 @@
 const LETTERS = "ABCDEFGHILMNOPQRSTUVZ";
 const DIGITS  = "0123456789";
 
-// nomi italiani delle lettere, per il confronto con il parlato
-const LETTER_NAMES = {
-  A:["a"], B:["bi","b"], C:["ci","c","chi"], D:["di","d"], E:["e"],
-  F:["effe","f"], G:["gi","g"], H:["acca","h"], I:["i"], L:["elle","l"],
-  M:["emme","m"], N:["enne","n"], O:["o"], P:["pi","p"], Q:["cu","q"],
-  R:["erre","r"], S:["esse","s"], T:["ti","t"], U:["u"], V:["vu","vi","v"],
-  Z:["zeta","z"]
-};
-const DIGIT_NAMES = {
-  "0":["zero"], "1":["uno"], "2":["due"], "3":["tre"], "4":["quattro"],
-  "5":["cinque"], "6":["sei"], "7":["sette"], "8":["otto"], "9":["nove"]
-};
-
 // ------------------------------------------------------------------
 // Stato configurazione
 // ------------------------------------------------------------------
 const DEFAULT_CFG = {
-  type: "lettere", respMode: "voce", level: 1,
-  fixTime: 600, expTime: 500, voiceTime: 3500,
+  type: "lettere", respMode: "tocco", level: 1,
+  fixTime: 600, expTime: 500,
   numStim: 20, contrast: 100
 };
 const cfg = { ...DEFAULT_CFG };
@@ -521,10 +443,27 @@ function pickTrialGeometry(level, prevAngle) {
 }
 
 // ------------------------------------------------------------------
-// Riconoscimento vocale: disponibilità
+// Rilevamento del tipo di dispositivo: serve solo a tarare la
+// tolleranza del tocco (le dita sono meno precise di un mouse, e i
+// dispositivi piccoli/touch si usano più da vicino). La dimensione dei
+// bersagli resta invece proporzionale al viewport (vw), che già di per
+// sé compensa in parte la distanza d'uso tipica di ciascun dispositivo.
 // ------------------------------------------------------------------
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const voiceSupported = !!SR;
+function detectDeviceClass() {
+  const touch = (navigator.maxTouchPoints || 0) > 0 || matchMedia("(pointer: coarse)").matches;
+  const longEdge = Math.max(window.screen.width, window.screen.height);
+  if (touch && longEdge <= 900) return "phone";
+  if (touch && longEdge <= 1400) return "tablet";
+  return "desktop";
+}
+const DEVICE_CLASS = detectDeviceClass();
+// hitPad: margine extra (px) attorno al bersaglio considerato "toccato";
+// distanceCm: distanza d'uso tipica assunta, solo a titolo indicativo
+const DEVICE_PRESETS = {
+  phone:   { hitPad: 34, distanceCm: 30 },
+  tablet:  { hitPad: 24, distanceCm: 40 },
+  desktop: { hitPad: 12, distanceCm: 50 },
+};
 
 // ------------------------------------------------------------------
 // Persistenza impostazioni per singolo studente
@@ -565,7 +504,6 @@ function loadProfile(name) {
     const saved = JSON.parse(localStorage.getItem(settingsKeyFor(name)));
     if (saved) Object.assign(cfg, saved);
   } catch (e) { /* impostazioni salvate non valide: si usano i valori di default */ }
-  if (!voiceSupported) cfg.respMode = "tastiera";
   if (!LEVELS[cfg.level]) cfg.level = DEFAULT_CFG.level;
 }
 
@@ -598,7 +536,6 @@ $("respMode").addEventListener("click", e => {
   if (!b || b.disabled) return;
   cfg.respMode = b.dataset.v;
   document.querySelectorAll("#respMode button").forEach(x => x.classList.toggle("sel", x === b));
-  $("voiceTimeField").style.display = cfg.respMode === "voce" ? "" : "none";
   saveSettings();
 });
 $("levelSeg").addEventListener("click", e => {
@@ -619,11 +556,6 @@ $("expTime").addEventListener("input", e => {
   $("expTimeVal").textContent = (cfg.expTime / 1000).toFixed(2).replace(".", ",") + " s";
   saveSettings();
 });
-$("voiceTime").addEventListener("input", e => {
-  cfg.voiceTime = +e.target.value;
-  $("voiceTimeVal").textContent = (cfg.voiceTime / 1000).toFixed(1).replace(".", ",") + " s";
-  saveSettings();
-});
 $("numStim").addEventListener("input", e => {
   cfg.numStim = +e.target.value;
   $("numStimVal").textContent = cfg.numStim;
@@ -642,25 +574,16 @@ function syncDashboard() {
   document.querySelectorAll("#respMode button").forEach(x => x.classList.toggle("sel", x.dataset.v === cfg.respMode));
   document.querySelectorAll("#levelSeg button").forEach(x => x.classList.toggle("sel", +x.dataset.v === cfg.level));
   $("levelHint").textContent = LEVELS[cfg.level].desc;
-  $("voiceTimeField").style.display = cfg.respMode === "voce" ? "" : "none";
   $("fixTime").value = cfg.fixTime;
   $("fixTimeVal").textContent = (cfg.fixTime / 1000).toFixed(2).replace(".", ",") + " s";
   $("expTime").value = cfg.expTime;
   $("expTimeVal").textContent = (cfg.expTime / 1000).toFixed(2).replace(".", ",") + " s";
-  $("voiceTime").value = cfg.voiceTime;
-  $("voiceTimeVal").textContent = (cfg.voiceTime / 1000).toFixed(1).replace(".", ",") + " s";
   $("numStim").value = cfg.numStim;
   $("numStimVal").textContent = cfg.numStim;
   const idx = CONTRAST_LEVELS.indexOf(cfg.contrast);
   $("contrast").value = idx === -1 ? 10 : idx;
   $("contrastVal").textContent = cfg.contrast + "%";
   $("contrastPreview").style.color = stimColor();
-}
-
-if (!voiceSupported) {
-  $("voceUnsupported").style.display = "";
-  $("voceHint").style.display = "none";
-  document.querySelector('#respMode button[data-v="voce"]').disabled = true;
 }
 
 const lastName = localStorage.getItem(LAST_NAME_KEY) || "";
@@ -749,41 +672,14 @@ window.addEventListener("resize", repositionTargetIfActive);
 window.addEventListener("orientationchange", repositionTargetIfActive);
 
 // ------------------------------------------------------------------
-// Confronto risposta vocale
-// ------------------------------------------------------------------
-const DIACRITICS_RE = new RegExp("[\\u0300-\\u036f]", "g");
-function normalizeToken(s) {
-  return s.toLowerCase().normalize("NFD").replace(DIACRITICS_RE, "").replace(/[^a-z0-9]/g, "");
-}
-function voiceMatches(transcript, target) {
-  if (!transcript) return false;
-  const tokens = transcript.split(/\s+/).map(normalizeToken).filter(Boolean);
-  const names = /[0-9]/.test(target) ? DIGIT_NAMES[target] : LETTER_NAMES[target];
-  const targetNorm = normalizeToken(target);
-  return tokens.some(tok => tok === targetNorm || (names && names.includes(tok)));
-}
-
-// ------------------------------------------------------------------
 // Macchina a stati della sessione
 // ------------------------------------------------------------------
 const session = {
   stimuli: [], results: [], idx: 0,
   startTime: 0, answerShownAt: 0, phase: "idle", timer: null,
-  recognition: null, transcript: "", evaluated: false,
-  currentAngle: null, currentAmp: null, lastAngle: null,
-  consecutiveEmptyVoice: 0, lastVoiceErrorWasPermission: false
+  evaluated: false,
+  currentAngle: null, currentAmp: null, lastAngle: null
 };
-
-function showVoiceCompatBanner() {
-  $("voiceCompatBanner").style.display = "block";
-}
-function hideVoiceCompatBanner() {
-  $("voiceCompatBanner").style.display = "none";
-}
-$("voiceCompatSwitchBtn").addEventListener("click", () => {
-  cfg.respMode = "tastiera";
-  hideVoiceCompatBanner();
-});
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
@@ -796,20 +692,17 @@ function startSession() {
   session.results = [];
   session.idx = 0;
   session.lastAngle = null;
-  session.consecutiveEmptyVoice = 0;
   session.startTime = performance.now();
   showScreen("session");
   ensureTargetEl();
-  $("micBanner").style.display = "none";
-  hideVoiceCompatBanner();
   nextStimulus();
 }
 
 function nextStimulus() {
   if (session.idx >= session.stimuli.length) return endSession();
   session.phase = "fixation";
+  session.evaluated = false;
   $("progress").textContent = `Stimolo ${session.idx + 1} di ${session.stimuli.length}`;
-  $("voiceZone").classList.remove("on");
   $("answerZone").classList.remove("on");
   $("feedback").style.display = "none";
   $("centerMark").classList.remove("dim");
@@ -820,6 +713,7 @@ function nextStimulus() {
 
 function showStimulus() {
   session.phase = "exposure";
+  session.evaluated = false;
   const geo = pickTrialGeometry(cfg.level, session.lastAngle);
   session.currentAngle = geo.angle;
   session.currentAmp = geo.amp;
@@ -833,129 +727,49 @@ function showStimulus() {
   el.style.color = stimColor();
   $("centerMark").classList.add("dim");
   session.answerShownAt = performance.now();
-  // finestra utile per la voce: dura cfg.voiceTime a partire da quando il
-  // bersaglio sparisce, non da quando compare (altrimenti l'esposizione
-  // "mangia" parte del tempo a disposizione per rispondere)
-  session.voiceDeadline = session.answerShownAt + cfg.expTime + cfg.voiceTime;
-
-  if (cfg.respMode === "voce" && voiceSupported) {
-    session.voiceRestarts = 0;
-    startListening();
-  }
   session.timer = setTimeout(hideStimulus, cfg.expTime);
 }
 
 function hideStimulus() {
   if (targetEl) targetEl.textContent = "";
-  if (cfg.respMode === "tastiera" || !voiceSupported) {
-    session.phase = "answer";
-    $("answerZone").classList.add("on");
-    const inp = $("answerInput");
-    inp.value = "";
-    inp.focus();
+  if (cfg.respMode === "tocco") {
+    if (!session.evaluated) evaluateTouch("timeout");
+    return;
   }
-  // in modalità voce, l'ascolto prosegue: la valutazione avviene a fine registrazione
+  session.phase = "answer";
+  $("answerZone").classList.add("on");
+  const inp = $("answerInput");
+  inp.value = "";
+  inp.focus();
 }
 
-function startListening() {
-  session.transcript = "";
-  session.evaluated = false;
-  session.lastVoiceErrorWasPermission = false;
-  $("voiceZone").classList.add("on");
-  $("voiceTranscript").textContent = "";
-  $("voiceDebug").textContent = "";
-  beginRecognitionAttempt();
-}
-
-// Il motore di riconoscimento del browser spesso si ferma da solo dopo
-// un breve silenzio, anche se la finestra di risposta configurata non è
-// ancora scaduta. In quel caso lo si fa ripartire subito (fino a un
-// massimo di tentativi) invece di interrompere l'ascolto.
-function beginRecognitionAttempt() {
-  const rec = new SR();
-  rec.lang = "it-IT";
-  rec.continuous = false;
-  rec.interimResults = true;
-  rec.maxAlternatives = 3;
-  session.recognition = rec;
-
-  rec.onstart = () => {
-    $("voiceDebug").textContent = "ascolto attivo…";
-  };
-  rec.onresult = e => {
-    let best = "";
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      best = e.results[i][0].transcript;
-      session.transcript = best;
-      $("voiceTranscript").textContent = best;
-      $("voiceDebug").textContent = e.results[i].isFinal ? "risultato finale ricevuto" : "sto sentendo qualcosa…";
-      if (e.results[i].isFinal) {
-        evaluateVoice();
-        return;
-      }
-    }
-  };
-  rec.onerror = e => {
-    $("voiceDebug").textContent = "errore motore vocale: " + e.error;
-    if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-      session.lastVoiceErrorWasPermission = true;
-      cfg.respMode = "tastiera";
-      const banner = $("micBanner");
-      banner.textContent = "🎤 Permesso microfono negato: proseguo con la tastiera.";
-      banner.style.display = "block";
-      $("voiceZone").classList.remove("on");
-      evaluateVoice();
-    }
-    // 'no-speech' e altri errori transitori: gestiti dal riavvio in onend
-  };
-  rec.onend = () => {
-    if (session.evaluated) return;
-    const remaining = session.voiceDeadline - performance.now();
-    if (remaining > 250 && session.voiceRestarts < 6 && cfg.respMode === "voce") {
-      session.voiceRestarts++;
-      $("voiceDebug").textContent = "riavvio ascolto (tentativo " + session.voiceRestarts + ")…";
-      try { beginRecognitionAttempt(); } catch (e) { evaluateVoice(); }
-    } else {
-      evaluateVoice();
-    }
-  };
-  try { rec.start(); } catch (e) { $("voiceDebug").textContent = "avvio fallito: " + e.message; evaluateVoice(); return; }
-
-  clearTimeout(session.voiceTimer);
-  const timeoutMs = Math.max(200, session.voiceDeadline - performance.now());
-  session.voiceTimer = setTimeout(() => {
-    try { rec.stop(); } catch (e) {}
-  }, timeoutMs);
-}
-
-function evaluateVoice() {
+// Modalità tocco: il bersaglio va toccato mentre è ancora visibile,
+// prima che sparisca (cfg.expTime è l'unica finestra di risposta,
+// niente tempo extra) — un ascoltatore unico sullo stage confronta le
+// coordinate del tocco con il rettangolo del bersaglio, allargato di un
+// margine che dipende dal tipo di dispositivo (dita meno precise di un
+// mouse). Vale sia per il tocco che per il click del mouse.
+function evaluateTouch(outcome) {
   if (session.evaluated) return;
   session.evaluated = true;
-  clearTimeout(session.voiceTimer);
-  try { session.recognition && session.recognition.stop(); } catch (e) {}
-  $("voiceZone").classList.remove("on");
-  const target = session.stimuli[session.idx];
-  const raw = (session.transcript || "").trim();
-  const correct = voiceMatches(raw, target);
-  const rt = performance.now() - session.answerShownAt;
-  session.results.push({ target, answer: raw ? raw.toUpperCase() : "(nessuna risposta)", correct, rt, amp: session.currentAmp });
   clearTimeout(session.timer);
-
-  // se il microfono resta "in ascolto" per diversi stimoli di fila senza
-  // catturare mai nulla (permesso concesso, nessun errore), è quasi
-  // sempre un browser che blocca il servizio di riconoscimento per
-  // motivi di privacy (DuckDuckGo, Brave, Opera...) piuttosto che un
-  // problema dell'utente: lo segnaliamo invece di lasciarlo in silenzio.
-  if (raw) {
-    session.consecutiveEmptyVoice = 0;
-    hideVoiceCompatBanner();
-  } else if (!session.lastVoiceErrorWasPermission) {
-    session.consecutiveEmptyVoice++;
-    if (session.consecutiveEmptyVoice >= 3) showVoiceCompatBanner();
-  }
-
-  showFeedback(correct, target, raw ? raw.toUpperCase() : "(nessuna risposta rilevata)", "Hai detto: ");
+  if (targetEl) targetEl.textContent = "";
+  const target = session.stimuli[session.idx];
+  const correct = outcome === "hit";
+  const rt = performance.now() - session.answerShownAt;
+  const answer = outcome === "hit" ? target : outcome === "miss" ? "(tocco impreciso)" : "(nessun tocco in tempo)";
+  session.results.push({ target, answer, correct, rt, amp: session.currentAmp });
+  showFeedback(correct, target, answer, "Hai toccato: ");
 }
+
+$("stage").addEventListener("pointerdown", e => {
+  if (cfg.respMode !== "tocco" || session.phase !== "exposure" || session.evaluated || !targetEl) return;
+  const rect = targetEl.getBoundingClientRect();
+  const pad = DEVICE_PRESETS[DEVICE_CLASS].hitPad;
+  const hit = e.clientX >= rect.left - pad && e.clientX <= rect.right + pad &&
+              e.clientY >= rect.top - pad && e.clientY <= rect.bottom + pad;
+  evaluateTouch(hit ? "hit" : "miss");
+});
 
 function submitAnswer() {
   if (session.phase !== "answer") return;
@@ -991,8 +805,8 @@ function showFeedback(correct, target, yoursText, yoursPrefix) {
     icon.className = "icon ko";
     corr.innerHTML = "La lettera/numero era:<b>" + target + "</b>";
     yours.textContent = yoursPrefix + yoursText;
-    if (cfg.respMode === "voce") {
-      // in modalità voce il ritmo non deve mai fermarsi, anche sugli errori
+    if (cfg.respMode === "tocco") {
+      // in modalità tocco il ritmo non deve mai fermarsi, anche sugli errori
       $("continueHint").textContent = "";
       session.timer = setTimeout(advance, 1400);
     } else {
@@ -1008,9 +822,8 @@ function advance() {
 
 function endSession() {
   session.phase = "idle";
+  session.evaluated = true;
   clearTimeout(session.timer);
-  clearTimeout(session.voiceTimer);
-  try { session.recognition && session.recognition.stop(); } catch (e) {}
   const totalMs = performance.now() - session.startTime;
   buildReport(totalMs);
   showScreen("report");
