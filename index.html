@@ -313,7 +313,7 @@
     </div>
 
     <div class="field">
-      <label>Tempo di fissazione centrale</label>
+      <label>Tempo di pausa centrale tra un bersaglio e l'altro</label>
       <div class="slider-row">
         <input type="range" id="fixTime" min="300" max="1500" value="600" step="100">
         <span class="slider-val" id="fixTimeVal">0,60 s</span>
@@ -321,6 +321,23 @@
     </div>
 
     <div class="field">
+      <label>Bersaglio di fissazione centrale</label>
+      <div class="seg" id="centralFixSeg">
+        <button data-v="croce" class="sel">✚ Croce fissa</button>
+        <button data-v="lettere">🔤 Lettera/numero (cambia ogni 4 s)</button>
+      </div>
+      <p class="hint">Con "Lettera/numero" al centro compare uno stimolo (dello stesso tipo scelto sopra) che cambia ogni 4 secondi: il soggetto deve mantenere lo sguardo fisso lì, toccando i bersagli in periferia solo con la visione periferica.</p>
+    </div>
+
+    <div class="field">
+      <label>Scomparsa del bersaglio periferico</label>
+      <div class="seg" id="hideMode">
+        <button data-v="scompare" class="sel">⏱️ Scompare dopo l'esposizione</button>
+        <button data-v="resta">📌 Resta finché non viene toccato</button>
+      </div>
+    </div>
+
+    <div class="field" id="expTimeField">
       <label>Tempo di esposizione del bersaglio</label>
       <div class="slider-row">
         <input type="range" id="expTime" min="100" max="1000" value="500" step="50">
@@ -396,7 +413,7 @@ const DIGITS  = "0123456789";
 // ------------------------------------------------------------------
 const DEFAULT_CFG = {
   type: "lettere", respMode: "tocco", level: 1,
-  fixTime: 600, expTime: 500,
+  fixTime: 600, expTime: 500, neverHide: false, centralFixation: false,
   numStim: 20, contrast: 100
 };
 const cfg = { ...DEFAULT_CFG };
@@ -414,15 +431,15 @@ function stimColor() {
 // comprese), pur restando casuale entro un intervallo.
 // ------------------------------------------------------------------
 const LEVELS = {
-  1: { amp: [15, 22], mode: "fixed", angles: [0, 180], jitter: 8, oppositeBias: 0,
+  1: { amp: [22, 33], mode: "fixed", angles: [0, 180], jitter: 8, oppositeBias: 0,
        desc: "Movimenti piccoli e simili tra loro, solo a sinistra/destra. Distanza dal centro comunque variabile." },
-  2: { amp: [18, 28], mode: "fixed", angles: [0, 90, 180, 270], jitter: 10, oppositeBias: 0,
+  2: { amp: [27, 42], mode: "fixed", angles: [0, 90, 180, 270], jitter: 10, oppositeBias: 0,
        desc: "Si aggiungono alto/basso. Ampiezza un po' più ampia e più variabile." },
-  3: { amp: [20, 36], mode: "fixed", angles: [0, 45, 90, 135, 180, 225, 270, 315], jitter: 12, oppositeBias: 0.2,
+  3: { amp: [30, 54], mode: "fixed", angles: [0, 45, 90, 135, 180, 225, 270, 315], jitter: 12, oppositeBias: 0.2,
        desc: "8 direzioni, incluse le diagonali. Ampiezza più ampia e variabile." },
-  4: { amp: [24, 42], mode: "free", angles: null, jitter: 0, oppositeBias: 0.4,
+  4: { amp: [36, 63], mode: "free", angles: null, jitter: 0, oppositeBias: 0.4,
        desc: "Posizione libera a 360°, ampiezza ampia e poco prevedibile." },
-  5: { amp: [28, 48], mode: "free", angles: null, jitter: 0, oppositeBias: 0.65,
+  5: { amp: [42, 72], mode: "free", angles: null, jitter: 0, oppositeBias: 0.65,
        desc: "Massima ampiezza e casualità: il bersaglio salta spesso dal lato opposto, anche in diagonale." }
 };
 function rndInRange([min, max]) { return min + Math.random() * (max - min); }
@@ -551,6 +568,21 @@ $("fixTime").addEventListener("input", e => {
   $("fixTimeVal").textContent = (cfg.fixTime / 1000).toFixed(2).replace(".", ",") + " s";
   saveSettings();
 });
+$("centralFixSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  cfg.centralFixation = b.dataset.v === "lettere";
+  document.querySelectorAll("#centralFixSeg button").forEach(x => x.classList.toggle("sel", x === b));
+  saveSettings();
+});
+$("hideMode").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  cfg.neverHide = b.dataset.v === "resta";
+  document.querySelectorAll("#hideMode button").forEach(x => x.classList.toggle("sel", x === b));
+  $("expTimeField").style.display = cfg.neverHide ? "none" : "";
+  saveSettings();
+});
 $("expTime").addEventListener("input", e => {
   cfg.expTime = +e.target.value;
   $("expTimeVal").textContent = (cfg.expTime / 1000).toFixed(2).replace(".", ",") + " s";
@@ -574,6 +606,9 @@ function syncDashboard() {
   document.querySelectorAll("#respMode button").forEach(x => x.classList.toggle("sel", x.dataset.v === cfg.respMode));
   document.querySelectorAll("#levelSeg button").forEach(x => x.classList.toggle("sel", +x.dataset.v === cfg.level));
   $("levelHint").textContent = LEVELS[cfg.level].desc;
+  document.querySelectorAll("#centralFixSeg button").forEach(x => x.classList.toggle("sel", x.dataset.v === (cfg.centralFixation ? "lettere" : "croce")));
+  document.querySelectorAll("#hideMode button").forEach(x => x.classList.toggle("sel", x.dataset.v === (cfg.neverHide ? "resta" : "scompare")));
+  $("expTimeField").style.display = cfg.neverHide ? "none" : "";
   $("fixTime").value = cfg.fixTime;
   $("fixTimeVal").textContent = (cfg.fixTime / 1000).toFixed(2).replace(".", ",") + " s";
   $("expTime").value = cfg.expTime;
@@ -686,6 +721,23 @@ function showScreen(id) {
   document.body.classList.toggle("light", id === "session");
 }
 
+// Fissazione centrale: quando attiva, al posto della croce "+" compare
+// uno stimolo (dello stesso tipo scelto per la periferia) che cambia
+// ogni 4 secondi, indipendentemente dal ritmo dei bersagli periferici —
+// serve a dare al soggetto qualcosa su cui tenere fisso lo sguardo
+// mentre tocca i bersagli periferici con la visione periferica.
+function updateCentralFixation() {
+  $("centerMark").textContent = makeStimulus();
+}
+function startCentralFixation() {
+  stopCentralFixation();
+  updateCentralFixation();
+  session.centralFixTimer = setInterval(updateCentralFixation, 4000);
+}
+function stopCentralFixation() {
+  clearInterval(session.centralFixTimer);
+}
+
 function startSession() {
   ensureAudio();
   session.stimuli = Array.from({ length: cfg.numStim }, makeStimulus);
@@ -695,6 +747,8 @@ function startSession() {
   session.startTime = performance.now();
   showScreen("session");
   ensureTargetEl();
+  if (cfg.centralFixation) startCentralFixation();
+  else { $("centerMark").textContent = "+"; }
   nextStimulus();
 }
 
@@ -705,7 +759,7 @@ function nextStimulus() {
   $("progress").textContent = `Stimolo ${session.idx + 1} di ${session.stimuli.length}`;
   $("answerZone").classList.remove("on");
   $("feedback").style.display = "none";
-  $("centerMark").classList.remove("dim");
+  if (!cfg.centralFixation) $("centerMark").classList.remove("dim");
   $("centerMark").style.display = "";
   if (targetEl) { targetEl.textContent = ""; targetEl.style.color = ""; }
   session.timer = setTimeout(showStimulus, cfg.fixTime);
@@ -725,9 +779,24 @@ function showStimulus() {
   const stim = session.stimuli[session.idx];
   el.textContent = stim;
   el.style.color = stimColor();
-  $("centerMark").classList.add("dim");
+  if (!cfg.centralFixation) $("centerMark").classList.add("dim");
   session.answerShownAt = performance.now();
-  session.timer = setTimeout(hideStimulus, cfg.expTime);
+  if (cfg.neverHide) {
+    // il bersaglio resta visibile finché non viene toccato: niente timer
+    // di scomparsa. Con la tastiera si può rispondere fin da subito,
+    // lettera ancora in vista.
+    if (cfg.respMode !== "tocco") revealAnswerZone();
+  } else {
+    session.timer = setTimeout(hideStimulus, cfg.expTime);
+  }
+}
+
+function revealAnswerZone() {
+  session.phase = "answer";
+  $("answerZone").classList.add("on");
+  const inp = $("answerInput");
+  inp.value = "";
+  inp.focus();
 }
 
 function hideStimulus() {
@@ -736,11 +805,7 @@ function hideStimulus() {
     if (!session.evaluated) evaluateTouch("timeout");
     return;
   }
-  session.phase = "answer";
-  $("answerZone").classList.add("on");
-  const inp = $("answerInput");
-  inp.value = "";
-  inp.focus();
+  revealAnswerZone();
 }
 
 // Modalità tocco: il bersaglio va toccato mentre è ancora visibile,
@@ -824,6 +889,7 @@ function endSession() {
   session.phase = "idle";
   session.evaluated = true;
   clearTimeout(session.timer);
+  stopCentralFixation();
   const totalMs = performance.now() - session.startTime;
   buildReport(totalMs);
   showScreen("report");
