@@ -161,6 +161,9 @@
     width: 1.6em;
     height: 1.6em;
   }
+  /* su smartphone il bersaglio risultava troppo grande rispetto allo
+     schermo: dimensione dimezzata rispetto a tablet/desktop */
+  body.device-phone .slot { font-size: clamp(1.5rem, 5vw, 3rem); }
   #answerZone {
     position: fixed;
     left: 50%; bottom: 12%;
@@ -460,11 +463,17 @@ function pickTrialGeometry(level, prevAngle) {
 }
 
 // ------------------------------------------------------------------
-// Rilevamento del tipo di dispositivo: serve solo a tarare la
-// tolleranza del tocco (le dita sono meno precise di un mouse, e i
-// dispositivi piccoli/touch si usano più da vicino). La dimensione dei
-// bersagli resta invece proporzionale al viewport (vw), che già di per
-// sé compensa in parte la distanza d'uso tipica di ciascun dispositivo.
+// Rilevamento del tipo di dispositivo: tara tolleranza del tocco,
+// dimensione del bersaglio e distanza dal centro. Su smartphone (specie
+// in landscape) uno schermo piccolo e basso rendeva i bersagli troppo
+// grandi e troppo vicini al centro: il margine fisso ai bordi (pensato
+// per un laptop) da solo "mangiava" gran parte dello spazio disponibile
+// in altezza. hitPad: margine extra (px) attorno al bersaglio
+// considerato "toccato" (le dita sono meno precise di un mouse);
+// margin: spazio (px) riservato ai bordi nel calcolo della posizione;
+// ampScale: moltiplicatore applicato all'ampiezza del livello (poi
+// comunque limitata al 92% per non uscire mai dallo schermo);
+// distanceCm: distanza d'uso tipica assunta, solo a titolo indicativo.
 // ------------------------------------------------------------------
 function detectDeviceClass() {
   const touch = (navigator.maxTouchPoints || 0) > 0 || matchMedia("(pointer: coarse)").matches;
@@ -474,12 +483,11 @@ function detectDeviceClass() {
   return "desktop";
 }
 const DEVICE_CLASS = detectDeviceClass();
-// hitPad: margine extra (px) attorno al bersaglio considerato "toccato";
-// distanceCm: distanza d'uso tipica assunta, solo a titolo indicativo
+document.body.classList.add("device-" + DEVICE_CLASS);
 const DEVICE_PRESETS = {
-  phone:   { hitPad: 34, distanceCm: 30 },
-  tablet:  { hitPad: 24, distanceCm: 40 },
-  desktop: { hitPad: 12, distanceCm: 50 },
+  phone:   { hitPad: 34, distanceCm: 30, margin: 40, ampScale: 1.4 },
+  tablet:  { hitPad: 24, distanceCm: 40, margin: 65, ampScale: 1.4 },
+  desktop: { hitPad: 12, distanceCm: 50, margin: 90, ampScale: 1.0 },
 };
 
 // ------------------------------------------------------------------
@@ -685,11 +693,13 @@ function ensureTargetEl() {
   return targetEl;
 }
 function computeTargetPosition(angleDeg, ampPercent) {
-  const margin = 90; // spazio riservato ai bordi per non far uscire il testo dallo schermo
+  const preset = DEVICE_PRESETS[DEVICE_CLASS];
+  const margin = preset.margin; // spazio riservato ai bordi per non far uscire il testo dallo schermo
+  const scaledAmp = Math.min(ampPercent * preset.ampScale, 92);
   const halfW = Math.max(0, window.innerWidth / 2 - margin);
   const halfH = Math.max(0, window.innerHeight / 2 - margin);
-  const rx = (ampPercent / 100) * halfW;
-  const ry = (ampPercent / 100) * halfH;
+  const rx = (scaledAmp / 100) * halfW;
+  const ry = (scaledAmp / 100) * halfH;
   const rad = angleDeg * Math.PI / 180;
   return {
     x: window.innerWidth / 2 + rx * Math.cos(rad),
